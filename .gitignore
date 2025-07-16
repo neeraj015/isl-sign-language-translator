@@ -1,10 +1,11 @@
+
 # Ignore Python virtual environment
 isl_env/
 
 # Ignore data files
 data/
 # logs/
-#models/
+# models/
 
 # Ignore Jupyter notebook checkpoints
 .ipynb_checkpoints/
@@ -30,7 +31,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-/data
+
 # Jupyter notebook checkpoints
 .ipynb_checkpoints/
 
@@ -39,15 +40,15 @@ data/processed/
 data/raw/no_gesture/  # Optional: if you don’t want to push personal images
 
 # Model files
-#models/*.h5
-#models/*.tflite
+models/*.h5
+models/*.tflite
 
 # Log & output files
-#logs/
+logs/
 *.log
-# *.csv
-# *.npy
-# *.txt
+#*.csv
+#*.npy
+#*.txt
 
 # Environment and IDE
 .env
