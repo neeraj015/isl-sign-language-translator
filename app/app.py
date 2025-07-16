@@ -1,15 +1,16 @@
 import streamlit as st
 import numpy as np
 import tensorflow as tf
-import cv2
+import av
 import joblib
 from pathlib import Path
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, WebRtcMode
 
-# ────────────── Streamlit Config ──────────────
+# ────────────── Config ──────────────
 st.set_page_config(page_title="ISL Translator", layout="wide")
-st.title("🤟 ISL Real-Time Sign Language Translator")
+st.title(" ISL Real-Time Sign Language Translator")
 
-# ────────────── Load TFLite Model & Labels ──────────────
+# ────────────── Load TFLite Model ──────────────
 project_root = Path(__file__).resolve().parent.parent
 model_path = project_root / "models" / "best_model.tflite"
 label_encoder_path = project_root / "logs" / "label_encoder.pkl"
@@ -23,25 +24,22 @@ output_details = interpreter.get_output_details()
 
 # ────────────── Sidebar Controls ──────────────
 st.sidebar.header("🔧 Controls")
-camera_index = st.sidebar.selectbox("Select Camera", options=[0, 1, 2], index=0)
-start_camera = st.sidebar.checkbox("📷 Start Camera")
 enable_tts = st.sidebar.checkbox("🔊 Enable Text-to-Speech")
-
-# ────────────── Webcam & UI Setup ──────────────
-frame_window = st.empty()
-prediction_text = st.empty()  # 👈 NEW: to show prediction on main UI
 
 # ────────────── Session State ──────────────
 if "last_label" not in st.session_state:
     st.session_state["last_label"] = ""
+if "current_label" not in st.session_state:
+    st.session_state["current_label"] = ""
+if "confidence" not in st.session_state:
+    st.session_state["confidence"] = 0.0
 
-# ────────────── Frame Preprocessing ──────────────
+# ────────────── Inference Logic ──────────────
 def preprocess_frame(frame):
     img = cv2.resize(frame, (64, 64))
     img = img.astype("float32") / 255.0
     return np.expand_dims(img, axis=0)
 
-# ────────────── Prediction Function ──────────────
 def predict_from_frame(frame):
     img = preprocess_frame(frame)
     interpreter.set_tensor(input_details[0]['index'], img)
@@ -52,40 +50,23 @@ def predict_from_frame(frame):
     confidence = float(preds[pred_index])
     return label, confidence
 
-# ────────────── Webcam Loop ──────────────
-if start_camera:
-    cap = cv2.VideoCapture(camera_index)
+# ────────────── Video Processor ──────────────
+import cv2
 
-    if not cap.isOpened():
-        st.error("❌ Failed to access camera.")
-    else:
-        st.success("✅ Camera started. Uncheck box to stop.")
+class SignProcessor(VideoProcessorBase):
+    def recv(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    while cap.isOpened() and start_camera:
-        ret, frame = cap.read()
-        if not ret:
-            st.warning("⚠️ Could not read frame.")
-            break
+        label, confidence = predict_from_frame(img_rgb)
+        st.session_state["current_label"] = label
+        st.session_state["confidence"] = confidence
 
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        label, confidence = predict_from_frame(frame_rgb)
-
-        # Show webcam frame
-        frame_window.image(frame_rgb)
-
-        # ✅ Show prediction on main screen (NEW!)
-        prediction_text.markdown(
-            f"<h3>🧠 Interpreted Sign: <span style='color:#007ACC;'>{label}</span></h3>"
-            f"<h4>Confidence: <span style='color:#444;'>{confidence:.2f}</span></h4>",
-            unsafe_allow_html=True
-        )
-
-        # Show prediction in sidebar
-        st.sidebar.markdown(f"**Predicted Label:** `{label}`")
-        st.sidebar.markdown(f"**Confidence:** `{confidence:.2f}`")
-
-        # 🔊 Speak only if label changed and confidence is high
-        if enable_tts and confidence > 0.90 and label != st.session_state["last_label"]:
+        if (
+            enable_tts
+            and confidence > 0.90
+            and label != st.session_state["last_label"]
+        ):
             try:
                 import pyttsx3
                 engine = pyttsx3.init()
@@ -93,8 +74,24 @@ if start_camera:
                 engine.say(f"The sign is {label}")
                 engine.runAndWait()
                 st.session_state["last_label"] = label
-            except Exception as e:
-                st.warning(f"TTS failed: {e}")
+            except:
+                pass
 
-    cap.release()
-    st.success("🛑 Camera stopped.")
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+# ────────────── WebRTC Stream ──────────────
+webrtc_ctx = webrtc_streamer(
+    key="isl-stream",
+    mode=WebRtcMode.SENDRECV,
+    video_processor_factory=SignProcessor,
+    media_stream_constraints={"video": True, "audio": False},
+    async_processing=True,
+)
+
+# ────────────── Display Output ──────────────
+if st.session_state.get("current_label"):
+    st.markdown(
+        f"<h3> Interpreted Sign: <span style='color:#007ACC;'>{st.session_state['current_label']}</span></h3>"
+        f"<h4>Confidence: <span style='color:#444;'>{st.session_state['confidence']:.2f}</span></h4>",
+        unsafe_allow_html=True,
+    )
