@@ -5,8 +5,12 @@ torch
 torchvision
 torchaudio
 
-streamlit==1.26.0
-streamlit-webrtc==0.45.0
+streamlit>=1.39.0
+streamlit-webrtc>=0.48.1
+av
+aiortc
+
+
 opencv-python
 mediapipe
 numpy
