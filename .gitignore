@@ -1,3 +1,28 @@
+
+# Ignore Python virtual environment
+isl_env/
+
+# Ignore data files
+data/
+logs/
+models/
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore __pycache__ folders
+__pycache__/
+
+# Ignore Streamlit logs
+.streamlit/
+
+# Ignore all pyc files
+*.pyc
+
+# Ignore hidden system files
+.DS_Store
+Thumbs.db
+
 # Python cache
 __pycache__/
 *.py[cod]
