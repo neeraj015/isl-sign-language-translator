@@ -1,0 +1,32 @@
+# Core ML & CV Libraries
+tensorflow
+torch
+torchvision
+torchaudio
+
+opencv-python
+mediapipe
+numpy
+pandas
+matplotlib
+seaborn
+scikit-learn
+
+# Audio & Text-to-Speech
+gtts
+pyttsx3
+
+# NLP + Transformers
+transformers
+sentencepiece
+
+# Web Apps / Frontend
+streamlit
+gradio
+fastapi
+uvicorn
+
+# Utilities
+tqdm
+joblib
+ipykernel
