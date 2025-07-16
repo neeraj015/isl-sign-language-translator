@@ -1,5 +1,6 @@
 # Core ML & CV Libraries
-tensorflow
+#tensorflow
+tensorflow==2.13.0
 torch
 torchvision
 torchaudio
