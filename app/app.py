@@ -3,14 +3,16 @@ import numpy as np
 import tensorflow as tf
 import av
 import joblib
+import cv2
+import requests
 from pathlib import Path
-from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, WebRtcMode
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, WebRtcMode, RTCConfiguration
 
-# ────────────── Config ──────────────
+# ────────────── Page Config ──────────────
 st.set_page_config(page_title="ISL Translator", layout="wide")
 st.title(" ISL Real-Time Sign Language Translator")
 
-# ────────────── Load TFLite Model ──────────────
+# ────────────── Load Model & Encoder ──────────────
 project_root = Path(__file__).resolve().parent.parent
 model_path = project_root / "models" / "best_model.tflite"
 label_encoder_path = project_root / "logs" / "label_encoder.pkl"
@@ -23,7 +25,7 @@ input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
 # ────────────── Sidebar Controls ──────────────
-st.sidebar.header("🔧 Controls")
+st.sidebar.header(" Controls")
 enable_tts = st.sidebar.checkbox("🔊 Enable Text-to-Speech")
 
 # ────────────── Session State ──────────────
@@ -34,7 +36,7 @@ if "current_label" not in st.session_state:
 if "confidence" not in st.session_state:
     st.session_state["confidence"] = 0.0
 
-# ────────────── Inference Logic ──────────────
+# ────────────── Frame Preprocessing ──────────────
 def preprocess_frame(frame):
     img = cv2.resize(frame, (64, 64))
     img = img.astype("float32") / 255.0
@@ -50,9 +52,18 @@ def predict_from_frame(frame):
     confidence = float(preds[pred_index])
     return label, confidence
 
-# ────────────── Video Processor ──────────────
-import cv2
+# ────────────── Twilio TURN Credentials ──────────────
+def get_turn_credentials():
+    account_sid = st.secrets["TWILIO"]["account_sid"]
+    auth_token = st.secrets["TWILIO"]["auth_token"]
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Tokens.json"
+    response = requests.post(url, auth=(account_sid, auth_token))
+    data = response.json()
+    return data["ice_servers"]
 
+rtc_config = RTCConfiguration({"iceServers": get_turn_credentials()})
+
+# ────────────── Video Frame Processor ──────────────
 class SignProcessor(VideoProcessorBase):
     def recv(self, frame):
         img = frame.to_ndarray(format="bgr24")
@@ -74,17 +85,18 @@ class SignProcessor(VideoProcessorBase):
                 engine.say(f"The sign is {label}")
                 engine.runAndWait()
                 st.session_state["last_label"] = label
-            except:
-                pass
+            except Exception as e:
+                st.warning(f"TTS failed: {e}")
 
         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-# ────────────── WebRTC Stream ──────────────
+# ────────────── Start WebRTC Stream ──────────────
 webrtc_ctx = webrtc_streamer(
     key="isl-stream",
     mode=WebRtcMode.SENDRECV,
-    video_processor_factory=SignProcessor,
+    rtc_configuration=rtc_config,
     media_stream_constraints={"video": True, "audio": False},
+    video_processor_factory=SignProcessor,
     async_processing=True,
 )
 
