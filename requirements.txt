@@ -5,6 +5,7 @@ torch
 torchvision
 torchaudio
 
+streamlit-webrtc==0.45.0
 opencv-python
 mediapipe
 numpy
