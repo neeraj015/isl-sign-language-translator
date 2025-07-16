@@ -1,3 +1,55 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Data files (can be large or sensitive)
+data/processed/
+data/raw/no_gesture/  # Optional: if you don’t want to push personal images
+
+# Model files
+models/*.h5
+models/*.tflite
+
+# Log & output files
+logs/
+*.log
+*.csv
+*.npy
+*.txt
+
+# Environment and IDE
+.env
+.venv/
+env/
+venv/
+isl_env/  # virtual environment folder
+*.env
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Streamlit generated files
+.streamlit/
+
+# VSCode
+.vscode/
+
+# OS metadata
+*.bak
+*.swp
+
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
